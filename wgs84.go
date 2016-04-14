@@ -30,6 +30,52 @@ func Wgs84ToMars(wgLat, wgLon float64) (mgLat, mgLon float64) {
 	return
 }
 
+func MarsToWgs84(mgLat, mgLng float64) (wgLat, wgLng float64) {
+	var dLat, dLng float64
+	wgLat = mgLat
+	wgLng = mgLng
+
+	if out_of_china(mgLat, mgLng) {
+		return
+	}
+
+	for i := 0; i < 2; i++ {
+		delta(wgLat, wgLng, &dLat, &dLng)
+		wgLat = mgLat - dLat
+		wgLng = mgLng - dLng
+	}
+
+	return
+}
+
+func delta(lat, lng float64, dLat, dLng *float64) {
+	transform(lng-105.0, lat-35.0, dLat, dLng)
+	radLat := lat / 180.0 * Pi
+	magic := Sin(radLat)
+	magic = 1 - EE*magic*magic
+	sqrtMagic := Sqrt(magic)
+	*dLat = (*dLat * 180.0) / ((A * (1 - EE)) / (magic * sqrtMagic) * Pi)
+	*dLng = (*dLng * 180.0) / (A / sqrtMagic * Cos(radLat) * Pi)
+}
+
+func transform(x, y float64, lat, lng *float64) {
+	xy := x * y
+	absX := Sqrt(Abs(x))
+	d := (20.0*Sin(6.0*x*Pi) + 20.0*Sin(2.0*x*Pi)) * 2.0 / 3.0
+
+	*lat = -100.0 + 2.0*x + 3.0*y + 0.2*y*y + 0.1*xy + 0.2*absX
+	*lng = 300.0 + x + 2.0*y + 0.1*x*x + 0.1*xy + 0.1*absX
+
+	*lat += d
+	*lng += d
+
+	*lat += (20.0*Sin(y*Pi) + 40.0*Sin(y/3.0*Pi)) * 2.0 / 3.0
+	*lng += (20.0*Sin(x*Pi) + 40.0*Sin(x/3.0*Pi)) * 2.0 / 3.0
+
+	*lat += (160.0*Sin(y/12.0*Pi) + 320*Sin(y/30.0*Pi)) * 2.0 / 3.0
+	*lng += (150.0*Sin(x/12.0*Pi) + 300.0*Sin(x/30.0*Pi)) * 2.0 / 3.0
+}
+
 func out_of_china(lat, lon float64) bool {
 	if lon < 72.004 || lon > 137.8347 {
 		return true
